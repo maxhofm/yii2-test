@@ -9,5 +9,11 @@ return [
         'cache' => [
             'class' => \yii\caching\FileCache::class,
         ],
+        'db' => [
+            'class' => 'yii\db\Connection',
+            'dsn' => 'sqlite:'. realpath(__DIR__ . '/../db').'/sqlite.db',
+            'charset' => 'utf8',
+            'enableSchemaCache' => true,
+        ],
     ],
 ];
