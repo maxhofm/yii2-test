@@ -8,21 +8,26 @@ use GuzzleHttp\Exception\GuzzleException;
 use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
+use yii\db\Connection;
 
 /**
  * User model
  *
- * @property string $hash_string
- * @property string $created_at
- * @property string $updated_at
- * @property string $url
- * @property integer $status_code
- * @property integer $query_count
+ * @property string $hash_string    Хэш url
+ * @property string $created_at     Дата создания
+ * @property string $updated_at     Дата редактирования
+ * @property string $url            URL ресура
+ * @property integer $status_code   Код ответа
+ * @property integer $query_count   Кол-во запросов
  */
 class UrlStatus extends ActiveRecord
 {
     const TIMEOUT_CODE = 0;
 
+    /**
+     * Установка БД для модели
+     * @return mixed|object|Connection|null
+     */
     public static function getDb()
     {
         return Yii::$app->dbSqlite;
@@ -36,10 +41,15 @@ class UrlStatus extends ActiveRecord
         return '{{%url_status}}';
     }
 
+    /**
+     * Поведения модели
+     * @return array[]
+     */
     public function behaviors(): array
     {
         return [
             [
+                // Установка текущего времени для полей created_at и updated_at
                 'class' => TimestampBehavior::class,
                 'attributes' => [
                     self::EVENT_BEFORE_INSERT => ['created_at', 'updated_at'],
@@ -53,7 +63,7 @@ class UrlStatus extends ActiveRecord
     /**
      * {@inheritdoc}
      */
-    public function rules()
+    public function rules(): array
     {
         return [
             [['hash_string', 'created_at', 'updated_at', 'url'], 'required'],
@@ -62,13 +72,6 @@ class UrlStatus extends ActiveRecord
             ['status_code', 'default', 'value' => self::TIMEOUT_CODE],
         ];
     }
-
-//    public function optimisticLock()
-//    {
-//        // вынести
-//        return 'updated_at';
-//    }
-
 
     /**
      * Обновить счетик запросов
@@ -81,7 +84,6 @@ class UrlStatus extends ActiveRecord
         }
         $this->query_count++;
     }
-
 
     /**
      * Поиск модели по хэшу
@@ -114,6 +116,7 @@ class UrlStatus extends ActiveRecord
     }
 
     /**
+     * Установка кода ответа запроса к внешнему ресурсу
      * @param string $method
      * @param string $url
      * @return void
@@ -146,4 +149,9 @@ class UrlStatus extends ActiveRecord
             ->all();
     }
 
+    //    public function optimisticLock()
+//    {
+//        //todo: вынести
+//        return 'updated_at';
+//    }
 }

@@ -3,10 +3,7 @@
 namespace backend\controllers;
 
 use backend\models\UrlStatus;
-use Exception;
-use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
-use Psr\Http\Message\ResponseInterface;
 use Yii;
 use yii\filters\auth\HttpBearerAuth;
 use yii\web\BadRequestHttpException;
@@ -19,9 +16,14 @@ use yii\web\ServerErrorHttpException;
  */
 class ApiController extends Controller
 {
-    public function behaviors()
+    /**
+     * Поведения контроллера
+     * @return array
+     */
+    public function behaviors(): array
     {
         $behaviors = parent::behaviors();
+        // Аутентификация перед запросом к API
         $behaviors['authenticator'] = [
             'class' => HttpBearerAuth::class,
         ];
@@ -38,8 +40,6 @@ class ApiController extends Controller
      */
     public function actionCheckStatus(): array
     {
-        // todo: исключения
-
         // Получаем данные запроса
         $request = $this->request;
         $urls = $request->post('url');
@@ -79,14 +79,14 @@ class ApiController extends Controller
                 $urlStatus->load($data, '');
             }
 
-            $codes[] = [
-                'url' => $url,
-                'code' => $urlStatus->status_code,
-            ];
             if (!$urlStatus->save()) {
                 Yii::error("Не удалось сохранить модель в базу");
                 throw new ServerErrorHttpException();
             }
+            $codes[] = [
+                'url' => $url,
+                'code' => $urlStatus->status_code,
+            ];
         }
 
         return ['codes' => $codes];

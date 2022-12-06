@@ -12,7 +12,7 @@ use yii\helpers\Json;
 class CheckStatusController extends Controller
 {
     /**
-     *  Получение статистики по запросам ()
+     *  Получение статистики по запросам с кодом не 200 за последние 24 часа
      *
      * @return void
      */
