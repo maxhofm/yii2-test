@@ -18,7 +18,7 @@ class CheckStatusController extends Controller
      */
     public function actionStatistics(): void
     {
-        $result = UrlStatus::getStatisticAsArray();
+        $result = UrlStatus::getBadRequestsStatistic();
         $this->stdout(Json::encode($result)."\r\n");
     }
 }

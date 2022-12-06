@@ -3,6 +3,9 @@
 namespace backend\controllers;
 
 use backend\models\UrlStatus;
+use Exception;
+use GuzzleHttp\Client;
+use GuzzleHttp\Promise;
 use GuzzleHttp\Exception\GuzzleException;
 use Yii;
 use yii\filters\auth\HttpBearerAuth;
@@ -32,7 +35,6 @@ class ApiController extends Controller
 
     /**
      * Запрос к api для проверки статуса url
-     *
      * @return array[]
      * @throws BadRequestHttpException
      * @throws GuzzleException
@@ -51,41 +53,71 @@ class ApiController extends Controller
             throw new BadRequestHttpException();
         }
 
-        $codes = [];
+        try {
+            $client = new Client();
+            $urls = array_unique($urls);
+            $promises = [];
+            $codes = [];
+
+            // Находим запросы которые были сделаны меннее 10 мин назад
+            $recentUrls = UrlStatus::getRecentRequestsStatisticByUrl($urls);
+
+            // Создаем промисы на url по которым необходимо сделать запросы
+            foreach ($urls as $url) {
+                if (!isset($recentUrls[$url])) {
+                    $promises[$url] = $client->getAsync($url);
+                }
+            }
+
+            // Выполняем запросы ассинхронно
+            $urlResponses = Promise\Utils::settle($promises)->wait();
+        } catch (Exception $e) {
+            throw new ServerErrorHttpException();
+        }
 
         // Обрабатываем каждый url
         foreach ($urls as $url) {
-            $urlStatus = UrlStatus::findByUrl($url);
-
-            if (!empty($urlStatus)) {
-                // Если прошло 10 минут с момента последгего запроса
-                if (strtotime($urlStatus->updated_at) < strtotime("-10 minutes")) {
-                    // Делаем запрос по url и обновляем модель
-                    $urlStatus->setExternalRequestCode('get', $url);
+            try {
+                if (isset($urlResponses[$url]['state']) && $urlResponses[$url]['state'] === 'rejected') {
+                    throw new Exception("Не удалось сделать запрос к {$url}");
                 }
+
+                // Находим модель в базе либо создаем новую
+                $urlStatus = UrlStatus::findByUrl($url);
+                if (empty($urlStatus)) {
+                    $urlStatus = new UrlStatus();
+                    $nowDate = date("Y-m-d H:i:s");
+                    $data = [
+                        'hash_string' => UrlStatus::generateHashByUrl($url),
+                        'url' => $url,
+                        'query_count' => 1,
+                        'created_at' => $nowDate,
+                        'updated_at' => $nowDate,
+                    ];
+                    $urlStatus->load($data, '');
+                }
+
+                // Если прошло 10 минут с момента последнего запроса или новый url
+                if (!isset($recentUrls[$url])) {
+                    // Берем код из ответа промиса
+                    $urlStatus->status_code = $urlResponses[$url]['value']->getStatusCode();
+                }
+
+                // Обновляем счечик запросов
                 $urlStatus->updateQueryCount();
-            } else {
-                // Делаем запрос по url и создаем модель
-                $urlStatus = new UrlStatus();
-                $urlStatus->setExternalRequestCode('get', $url);
-                $nowDate = date("Y-m-d H:i:s");
-                $data = [
-                    'hash_string' => UrlStatus::generateHashByUrl($url),
-                    'url' => $url,
-                    'query_count' => 1,
-                    'created_at' => $nowDate,
-                    'updated_at' => $nowDate,
-                ];
-                $urlStatus->load($data, '');
+
+                if (!$urlStatus->save()) {
+                    throw new \yii\db\Exception("Не удалось сохранить модель в базу");
+                }
+                $code = $urlStatus->status_code;
+            } catch (Exception $e) {
+                $code = -1;
+                Yii::error($e->getMessage());
             }
 
-            if (!$urlStatus->save()) {
-                Yii::error("Не удалось сохранить модель в базу");
-                throw new ServerErrorHttpException();
-            }
             $codes[] = [
                 'url' => $url,
-                'code' => $urlStatus->status_code,
+                'code' => $code,
             ];
         }
 

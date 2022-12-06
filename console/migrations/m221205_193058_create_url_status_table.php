@@ -33,7 +33,7 @@ class m221205_193058_create_url_status_table extends Migration
      */
     public function safeDown()
     {
-        // Запрещаем откат миграции на продуктовой среде
+        // Запрещаем откат миграции на продакшн среде
         if (!YII_ENV_PROD) {
             $this->dropTable('{{%url_status}}');
         }

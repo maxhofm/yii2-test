@@ -70,6 +70,7 @@ class UrlStatus extends ActiveRecord
             [['status_code', 'query_count'], 'integer'],
             [['created_at', 'updated_at'], 'default', 'value' => date("Y-m-d H:i:s")],
             ['status_code', 'default', 'value' => self::TIMEOUT_CODE],
+            ['status_code', 'default', 'value' => 0],
         ];
     }
 
@@ -79,9 +80,6 @@ class UrlStatus extends ActiveRecord
      */
     public function updateQueryCount()
     {
-        if (is_null($this->query_count)) {
-            $this->query_count = 0;
-        }
         $this->query_count++;
     }
 
@@ -116,35 +114,33 @@ class UrlStatus extends ActiveRecord
     }
 
     /**
-     * Установка кода ответа запроса к внешнему ресурсу
-     * @param string $method
-     * @param string $url
-     * @return void
-     * @throws GuzzleException
-     */
-    public function setExternalRequestCode(string $method, string $url): void
-    {
-        try {
-            $client = new Client();
-            $response = $client->request($method, $url, ['connect_timeout' => 5]);
-            $code = $response->getStatusCode();
-        } catch (Exception $e) {
-            $code = UrlStatus::TIMEOUT_CODE;
-        }
-        $this->status_code = $code;
-    }
-
-    /**
      * Получение статистики по запросам за последние 24 часа у которых статус не 200
      * @return array
      */
-    public static function getStatisticAsArray(): array
+    public static function getBadRequestsStatistic(): array
     {
         return self::find()
             ->select(['url', 'status_code'])
             ->where(['!=', 'status_code', 200])
             ->andWhere(['>', 'updated_at', date("Y-m-d H:i:s", strtotime("-1 day"))])
             ->orderBy(['updated_at' => SORT_DESC])
+            ->asArray()
+            ->all();
+    }
+
+    /**
+     * Получение статистики по запросам за последние 10 мин
+     * @param array $urls
+     * @return array
+     */
+    public static function getRecentRequestsStatisticByUrl(array $urls): array
+    {
+        return self::find()
+            ->select(['url', 'status_code'])
+            ->where(['url' => $urls])
+            ->andWhere(['>', 'updated_at', date("Y-m-d H:i:s", strtotime("-10 minutes"))])
+            ->orderBy(['updated_at' => SORT_DESC])
+            ->indexBy('url')
             ->asArray()
             ->all();
     }
