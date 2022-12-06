@@ -2,26 +2,25 @@
 
 namespace backend\models;
 
+use Exception;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
 use Yii;
-use yii\base\NotSupportedException;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
-use yii\web\IdentityInterface;
 
 /**
  * User model
  *
  * @property string $hash_string
- * @property integer $created_at
- * @property integer $updated_at
+ * @property string $created_at
+ * @property string $updated_at
  * @property string $url
  * @property integer $status_code
  * @property integer $query_count
  */
 class UrlStatus extends ActiveRecord
 {
-    protected $query_count;
-
     const TIMEOUT_CODE = 0;
 
     public static function getDb()
@@ -32,18 +31,24 @@ class UrlStatus extends ActiveRecord
     /**
      * {@inheritdoc}
      */
-    public static function tableName()
+    public static function tableName(): string
     {
         return '{{%url_status}}';
     }
 
-
-//    private $_volume;
-//
-//    public function setHashString($volume)
-//    {
-//        $this->_volume = (float) $volume;
-//    }
+    public function behaviors(): array
+    {
+        return [
+            [
+                'class' => TimestampBehavior::class,
+                'attributes' => [
+                    self::EVENT_BEFORE_INSERT => ['created_at', 'updated_at'],
+                    self::EVENT_BEFORE_UPDATE => ['updated_at'],
+                ],
+                 'value' => date("Y-m-d H:i:s"),
+            ],
+        ];
+    }
 
     /**
      * {@inheritdoc}
@@ -53,6 +58,7 @@ class UrlStatus extends ActiveRecord
         return [
             [['hash_string', 'created_at', 'updated_at', 'url'], 'required'],
             [['status_code', 'query_count'], 'integer'],
+            [['created_at', 'updated_at'], 'default', 'value' => date("Y-m-d H:i:s")],
             ['status_code', 'default', 'value' => self::TIMEOUT_CODE],
         ];
     }
@@ -70,8 +76,10 @@ class UrlStatus extends ActiveRecord
      */
     public function updateQueryCount()
     {
-        $count = $this->query_count;
-        $this->query_count = is_null($count) ? 1 : $count++;
+        if (is_null($this->query_count)) {
+            $this->query_count = 0;
+        }
+        $this->query_count++;
     }
 
 
@@ -104,4 +112,38 @@ class UrlStatus extends ActiveRecord
     {
         return md5($url);
     }
+
+    /**
+     * @param string $method
+     * @param string $url
+     * @return void
+     * @throws GuzzleException
+     */
+    public function setExternalRequestCode(string $method, string $url): void
+    {
+        try {
+            $client = new Client();
+            $response = $client->request($method, $url, ['connect_timeout' => 5]);
+            $code = $response->getStatusCode();
+        } catch (Exception $e) {
+            $code = UrlStatus::TIMEOUT_CODE;
+        }
+        $this->status_code = $code;
+    }
+
+    /**
+     * Получение статистики по запросам за последние 24 часа у которых статус не 200
+     * @return array
+     */
+    public static function getStatisticAsArray(): array
+    {
+        return self::find()
+            ->select(['url', 'status_code'])
+            ->where(['!=', 'status_code', 200])
+            ->andWhere(['>', 'updated_at', date("Y-m-d H:i:s", strtotime("-1 day"))])
+            ->orderBy(['updated_at' => SORT_DESC])
+            ->asArray()
+            ->all();
+    }
+
 }

@@ -15,7 +15,6 @@ return [
     'components' => [
         'request' => [
             'csrfParam' => '_csrf-backend',
-            // todo: настроить
             'enableCsrfValidation' => false,
             'parsers' => [
                 'application/json' => 'yii\web\JsonParser',
@@ -24,6 +23,7 @@ return [
         'user' => [
             'identityClass' => 'common\models\User',
             'enableAutoLogin' => true,
+            'enableSession' => false,
             'identityCookie' => ['name' => '_identity-backend', 'httpOnly' => true],
         ],
         'session' => [

@@ -8,6 +8,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use Psr\Http\Message\ResponseInterface;
 use Yii;
+use yii\filters\auth\HttpBearerAuth;
 use yii\web\BadRequestHttpException;
 use yii\web\Controller;
 use yii\web\Response;
@@ -18,33 +19,24 @@ use yii\web\ServerErrorHttpException;
  */
 class ApiController extends Controller
 {
-//    /**
-//     * {@inheritdoc}
-//     */
-//    public function behaviors()
-//    {
-//        return [
-//            'access' => [
-//                'class' => AccessControl::class,
-//                'rules' => [
-//                    [
-//                        'actions' => ['check-status'],
-//                        'allow' => true,
-//                    ],
-//                ],
-//            ],
-//        ];
-//    }
+    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['authenticator'] = [
+            'class' => HttpBearerAuth::class,
+        ];
+        return $behaviors;
+    }
 
     /**
      * Запрос к api для проверки статуса url
      *
-     * @return string
+     * @return array[]
      * @throws BadRequestHttpException
      * @throws GuzzleException
      * @throws ServerErrorHttpException
      */
-    public function actionCheckStatus(): string
+    public function actionCheckStatus(): array
     {
         // todo: исключения
 
@@ -60,7 +52,6 @@ class ApiController extends Controller
         }
 
         $codes = [];
-        $nowDate =  date("Y-m-d H:i:s");
 
         // Обрабатываем каждый url
         foreach ($urls as $url) {
@@ -70,22 +61,20 @@ class ApiController extends Controller
                 // Если прошло 10 минут с момента последгего запроса
                 if (strtotime($urlStatus->updated_at) < strtotime("-10 minutes")) {
                     // Делаем запрос по url и обновляем модель
-                    $response = $this->makeExternalRequest('get', $url);
-                    $urlStatus->status_code = $response->getStatusCode();
-                    $urlStatus->updated_at = $nowDate;
+                    $urlStatus->setExternalRequestCode('get', $url);
                 }
                 $urlStatus->updateQueryCount();
             } else {
                 // Делаем запрос по url и создаем модель
-                $response = $this->makeExternalRequest('get', $url);
                 $urlStatus = new UrlStatus();
+                $urlStatus->setExternalRequestCode('get', $url);
+                $nowDate = date("Y-m-d H:i:s");
                 $data = [
                     'hash_string' => UrlStatus::generateHashByUrl($url),
+                    'url' => $url,
+                    'query_count' => 1,
                     'created_at' => $nowDate,
                     'updated_at' => $nowDate,
-                    'url' => $url,
-                    'status_code' => $response->getStatusCode(),
-                    'query_count' => 1,
                 ];
                 $urlStatus->load($data, '');
             }
@@ -95,29 +84,11 @@ class ApiController extends Controller
                 'code' => $urlStatus->status_code,
             ];
             if (!$urlStatus->save()) {
-                $er = $urlStatus->errors;
-                Yii::error("Не удалось сохранить модель в базу: ");
+                Yii::error("Не удалось сохранить модель в базу");
                 throw new ServerErrorHttpException();
             }
         }
 
-        $response->data = ['codes' => $codes];
+        return ['codes' => $codes];
     }
-
-    /**
-     * @param string $method
-     * @param string $url
-     * @return ResponseInterface
-     * @throws GuzzleException|ServerErrorHttpException
-     */
-    protected function makeExternalRequest(string $method, string $url): ResponseInterface
-    {
-        try {
-            $client = new Client();
-            return $client->request($method, $url, ['connect_timeout' => 5]);
-        } catch (Exception $e) {
-            throw new ServerErrorHttpException();
-        }
-    }
-
 }
