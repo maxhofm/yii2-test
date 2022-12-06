@@ -15,6 +15,11 @@ return [
     'components' => [
         'request' => [
             'csrfParam' => '_csrf-backend',
+            // todo: настроить
+            'enableCsrfValidation' => false,
+            'parsers' => [
+                'application/json' => 'yii\web\JsonParser',
+            ]
         ],
         'user' => [
             'identityClass' => 'common\models\User',
@@ -41,6 +46,13 @@ return [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
+                'api/CheckStatus' => 'api/check-status',
+                // todo: группировать
+//                [
+//                    'pattern' => 'api/CheckStatus',
+//                    'route' => 'api/check-status',
+//                    'suffix' => '.json',
+//                ],
             ],
         ],
     ],

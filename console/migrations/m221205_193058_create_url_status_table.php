@@ -7,12 +7,17 @@ use yii\db\Migration;
  */
 class m221205_193058_create_url_status_table extends Migration
 {
+    protected function getDb()
+    {
+        return Yii::$app->dbSqlite;
+    }
+
     /**
      * {@inheritdoc}
      */
     public function safeUp()
     {
-        $this->createTable('url_status', [
+        $this->createTable('{{%url_status}}', [
             'hash_string' => $this->string(32)->unique()->notNull(),
             'created_at' => $this->dateTime()->notNull(),
             'updated_at' => $this->dateTime()->notNull(),
@@ -28,6 +33,9 @@ class m221205_193058_create_url_status_table extends Migration
      */
     public function safeDown()
     {
-        $this->dropTable('url_status');
+        // Запрещаем откат миграции на продуктовой среде
+        if (!YII_ENV_PROD) {
+            $this->dropTable('{{%url_status}}');
+        }
     }
 }
