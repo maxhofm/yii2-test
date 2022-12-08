@@ -2,10 +2,12 @@
 
 namespace common\models;
 
+use frontend\models\UserProfile;
 use Yii;
 use yii\base\NotSupportedException;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
+use yii\web\GroupUrlRule;
 use yii\web\IdentityInterface;
 
 /**
@@ -46,6 +48,33 @@ class User extends ActiveRecord implements IdentityInterface
         return [
             TimestampBehavior::class,
         ];
+    }
+
+    public function afterSave($insert, $changedAttributes)
+    {
+        parent::afterSave($insert, $changedAttributes);
+
+        if ($insert) {
+            $profile = new UserProfile();
+            $profile->link('user', $this);
+        }
+    }
+
+    /**
+     * Gets query for [[UserProfiles]].
+     *
+     * @return array|\yii\db\ActiveQuery|ActiveRecord
+     */
+    public function getProfile()
+    {
+        return $this->hasOne(UserProfile::class, ['user_id' => 'id'])
+            ->viaTable('user_profile', ['user_id' => 'id'])
+            ->one();
+    }
+
+    public function getProfileId()
+    {
+        return $this->profile->id;
     }
 
     /**

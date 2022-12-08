@@ -4,6 +4,10 @@ use \yii\db\Migration;
 
 class m190124_110200_add_verification_token_column_to_user_table extends Migration
 {
+    protected function getDb()
+    {
+        return Yii::$app->db;
+    }
     public function up()
     {
         $this->addColumn('{{%user}}', 'verification_token', $this->string()->defaultValue(null));

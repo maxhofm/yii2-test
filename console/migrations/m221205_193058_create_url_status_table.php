@@ -9,6 +9,7 @@ class m221205_193058_create_url_status_table extends Migration
 {
     protected function getDb()
     {
+        // todo: test
         return Yii::$app->dbSqlite;
     }
 

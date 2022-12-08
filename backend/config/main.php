@@ -47,12 +47,6 @@ return [
             'showScriptName' => false,
             'rules' => [
                 'api/CheckStatus' => 'api/check-status',
-                // todo: группировать
-//                [
-//                    'pattern' => 'api/CheckStatus',
-//                    'route' => 'api/check-status',
-//                    'suffix' => '.json',
-//                ],
             ],
         ],
     ],
