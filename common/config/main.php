@@ -19,21 +19,5 @@ return [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
         ],
-        'mailer' => [
-            'class' => \yii\symfonymailer\Mailer::class,
-            'useFileTransport' => false,
-            'viewPath' => '@common/mail',
-            'transport' => [
-//                'scheme' => 'smtp',
-//                'host' => 'smtp.gmail.com',
-//                'username' => 'max.hofmann125x@gmail.com',
-//                'password' => 'lenqgutavebuqnzr',
-//                'port' => 465,
-//                'encryption' => 'ssl',
-//                'auth_mode' => 'login',
-//                'dsn' => 'native://default',
-                'dsn' => 'gmail://max.hofmann125x@gmail.com:lenqgutavebuqnzr@default',
-            ],
-        ],
     ],
 ];
